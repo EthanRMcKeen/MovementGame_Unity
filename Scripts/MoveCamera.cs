@@ -5,9 +5,18 @@ using UnityEngine;
 public class MoveCamera : MonoBehaviour
 {
     public Transform cameraPosition;
+    public Transform orientation;
+    public bool thirdPersonView;
 
     private void Update()
     {
-        transform.position = cameraPosition.position;
+        if(!thirdPersonView)
+        {
+            transform.position = cameraPosition.position;
+        }
+        else
+        {
+            transform.position = cameraPosition.position - orientation.forward * 4f + Vector3.up * 1f;
+        }
     }
 }

@@ -16,6 +16,7 @@ public class Dashing2 : MonoBehaviour
     public LayerMask dashMask;
     [Tooltip("Small distance to stay away from obstacles when dashing")]
     public float skinWidth = 0.1f;
+    public float postDashVelocity;
 
     [Header("cooldown")]
     public float dashCd;
@@ -122,7 +123,7 @@ public class Dashing2 : MonoBehaviour
             rb.MovePosition(targetPosition);
         }
 
-        rb.linearVelocity = Vector3.zero;
+        rb.linearVelocity = dashDirection * postDashVelocity;
 
         pm.dashing = false;
         cam.DoFov(80f);

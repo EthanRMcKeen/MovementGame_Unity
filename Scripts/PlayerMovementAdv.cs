@@ -48,7 +48,9 @@ public class PlayerMovementAdv : MonoBehaviour
     public float maxSlopeAngle;
     public RaycastHit slopeHit;
 
+    [Header("References")]
     public Transform orientation;
+    public Animator anim;
 
     float horizontalInput;
     float verticalInput;
@@ -67,6 +69,7 @@ public class PlayerMovementAdv : MonoBehaviour
     public bool dashing;
     public bool slamming;
     public bool superSlamming;
+    public bool lightAttacking;
 
     public MovementState state;
     public enum MovementState
@@ -80,7 +83,8 @@ public class PlayerMovementAdv : MonoBehaviour
         dashing,
         air,
         slamming,
-        superslamming, 
+        superslamming,
+        lightAttacking, 
         unknown
     }
 
@@ -90,6 +94,8 @@ public class PlayerMovementAdv : MonoBehaviour
         rb.freezeRotation = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
+        //anim = GetComponentInChildren<Animator>();
+    
         readyToJump = true;
         startYScale = transform.localScale.y;
         jumpsRemaining = maxJumps;
@@ -126,6 +132,7 @@ public class PlayerMovementAdv : MonoBehaviour
         GetInput();
         HandleDrag();
         StateHandler();
+        UpdateAnimations();
     }
 
     void FixedUpdate()
@@ -247,6 +254,7 @@ public class PlayerMovementAdv : MonoBehaviour
 
             jumpsRemaining = maxJumps - 1;
             jumpQueued = false; // consume
+
             return;
         }
 
@@ -322,29 +330,51 @@ public class PlayerMovementAdv : MonoBehaviour
             maxGroundSpeed = crouchSpeed;
         }
 
+        //Mode - Light Attacking
+        else if (lightAttacking)
+        {
+            state = MovementState.lightAttacking;
+        }
+
         // Mode - idle
-        else if (grounded && horizontalInput == 0 && verticalInput == 0)
+        else if (grounded && horizontalInput == 0 && verticalInput == 0 && !jumpQueued)
         {
             state = MovementState.idle;
         }
 
         // Mode - sprinting
-        else if (grounded && Input.GetKey(sprintKey))
+        else if (grounded && Input.GetKey(sprintKey) && !jumpQueued)
         {
             state = MovementState.sprinting;
             maxGroundSpeed = sprintSpeed;
         }
+
         //Mode - walking
-        else if (grounded)
+        else if (grounded && !jumpQueued)
         {
             state = MovementState.walking;
             maxGroundSpeed = walkSpeed;
         }
-        //Mode - air
+        //Mode - unkown
         else
         {
             state = MovementState.unknown;
         }
+    }
+
+    void UpdateAnimations()
+    {
+        anim.SetBool("isRunning", state == MovementState.sprinting);
+
+        anim.SetBool("isWalking", state == MovementState.walking);
+
+        anim.SetBool("isSliding", state == MovementState.sliding);
+
+        anim.SetBool("isJumping", !grounded && jumpsRemaining == maxJumps - 1);
+
+        anim.SetBool("isDoubleJumping", !grounded && jumpsRemaining == maxJumps - 2);
+
+        anim.SetBool("isLAttacking", state == MovementState.lightAttacking);
     }
 
     private void ResetJump()
@@ -386,6 +416,18 @@ public class PlayerMovementAdv : MonoBehaviour
         Vector3 slopeGravity = Vector3.ProjectOnPlane(gravity, slopeHit.normal);
 
         rb.AddForce(-slopeGravity, ForceMode.Acceleration);
+    }
+
+    public void AnimationHandler(string parameter)
+    {
+        if(parameter != "idle")
+            anim.SetBool(parameter, true);
+
+        string[] otherParams = new string[] { "isRunning", "isSliding", "isJumping", "isDoubleJumping" };
+        foreach (string other in otherParams)        {
+            if (other != parameter)
+                anim.SetBool(other, false);
+        }
     }
 
 
