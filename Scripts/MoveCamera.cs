@@ -1,16 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 using UnityEngine;
 
 public class MoveCamera : MonoBehaviour
 {
     public Transform cameraPosition;
     public Transform orientation;
-    public bool thirdPersonView;
+    public Toggle thirdPersonView;
 
     private void Update()
     {
-        if(!thirdPersonView)
+        if(!thirdPersonView.isOn)
         {
             transform.position = cameraPosition.position;
         }

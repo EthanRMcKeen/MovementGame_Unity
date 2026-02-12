@@ -27,20 +27,6 @@ public class Sliding : MonoBehaviour
     public KeyCode slideKey = KeyCode.LeftControl;
     public KeyCode sprintKey = KeyCode.LeftShift;
 
-    // If true, we should resume sliding automatically when the player lands
-    [HideInInspector]
-    public bool resumeOnLand;
-
-    public void QueueResumeOnLand()
-    {
-        resumeOnLand = true;
-    }
-
-    public void ClearResumeOnLand()
-    {
-        resumeOnLand = false;
-    }
-
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -61,10 +47,8 @@ public class Sliding : MonoBehaviour
 
         if (Input.GetKeyUp(slideKey))
         {
-            // If player releases the slide key, stop sliding and cancel any queued resume
             if (pm.sliding)
                 StopSlide();
-            resumeOnLand = false;
         }
 
         if (pm.sliding && (!pm.grounded || (pm.OnSlope() && rb.linearVelocity.y < 0.1f)))
@@ -111,19 +95,32 @@ public class Sliding : MonoBehaviour
 
     private void SlidingMovement()
     {
-        Vector3 moveDir = slideDirection;
+        Vector3 inputDir =
+            orientation.forward * Input.GetAxisRaw("Vertical") +
+            orientation.right * Input.GetAxisRaw("Horizontal");
+
+        if (inputDir.magnitude > 0.1f)
+        {
+            // Smoothly interpolate slide direction towards input direction
+            slideDirection = Vector3.Lerp(
+                slideDirection,
+                inputDir.normalized,
+                Time.deltaTime * 1.5f
+            ).normalized;
+        }
+        
         if (pm.OnSlope())
         {
-            moveDir = pm.GetSlopeMoveDirection(moveDir);
+            slideDirection = pm.GetSlopeMoveDirection(slideDirection);
             Vector3 downSlopeDir = Vector3.ProjectOnPlane(Vector3.down, pm.slopeHit.normal).normalized;
-            if (Vector3.Dot(moveDir, downSlopeDir) > 0)
+            if (Vector3.Dot(slideDirection, downSlopeDir) > 0)
             {
                 slideSpeed += slideAcceleration * Time.deltaTime;
                 slideSpeed = Mathf.Min(slideSpeed, maxSlideSpeed);
             }
         }
 
-        Vector3 targetVel = moveDir * slideSpeed;
+        Vector3 targetVel = slideDirection * slideSpeed;
 
         if (pm.OnSlope())
         {

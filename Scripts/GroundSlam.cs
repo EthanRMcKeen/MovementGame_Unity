@@ -18,9 +18,10 @@ public class GroundSlam : MonoBehaviour
     [Header("Settings")]
     public bool disableGravityDuringSlam = false;
     public float keyTapTimeMax = 0.2f;
+    public float slamCooldown = 2f;
+    private float slamCooldownTimer;
 
     private bool superSlam = false;
-    // private bool slamQueued = false;
     private Vector3 originalVelocity;
     private float keyTapTime;
 
@@ -28,6 +29,7 @@ public class GroundSlam : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         pm = GetComponent<PlayerMovementAdv>();
+        slamCooldownTimer = 0f;
     }
 
     private void Update()
@@ -37,28 +39,28 @@ public class GroundSlam : MonoBehaviour
 
         if(keyTapped && !pm.sliding && !pm.slamming && !pm.superSlamming && !pm.grounded)
         {
-            keyTapTime = Time.time;
-            // slamQueued = true;
-            Slam();
+            if(slamCooldownTimer <= 0)
+            {
+                slamCooldownTimer = slamCooldown;
+                keyTapTime = Time.time;
+                Slam();
+            }
         }
         else if(keyHeld && (Time.time - keyTapTime) > keyTapTimeMax && !pm.sliding  && !pm.superSlamming && !pm.grounded)
         {
-            superSlam = true;
-            //slamQueued = false;
-            Slam();
+            if(slamCooldownTimer <= 0)
+            {
+                slamCooldownTimer = slamCooldown;
+                superSlam = true;
+                Slam();
+            }
         }
-
-        // if(slamQueued && !keyHeld)
-        // {
-        //     superSlam = false;
-        //     slamQueued = false;
-        //     Slam();
-        // }
 
         if((pm.slamming || pm.superSlamming) && pm.grounded)
-        {
             ResetSlam();
-        }
+        
+        if(slamCooldownTimer > 0)
+            slamCooldownTimer -= Time.deltaTime;
     }
 
     private void Slam()

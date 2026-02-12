@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 using UnityEngine;
 
 public class PlayerMovementAdv : MonoBehaviour
@@ -40,9 +41,9 @@ public class PlayerMovementAdv : MonoBehaviour
     public KeyCode crouchKey = KeyCode.LeftControl;
 
     [Header("Ground Check")]
-    public float playerHeight = 2f;
     public LayerMask whatIsGround;
     public bool grounded;
+    public float playerHeight = 2f;
 
     [Header("Slope Handling")]
     public float maxSlopeAngle;
@@ -51,6 +52,8 @@ public class PlayerMovementAdv : MonoBehaviour
     [Header("References")]
     public Transform orientation;
     public Animator anim;
+    private PlayerCombat combat;
+    public Toggle debugMode;
 
     float horizontalInput;
     float verticalInput;
@@ -64,6 +67,7 @@ public class PlayerMovementAdv : MonoBehaviour
     Rigidbody rb;
     Vector3 wishDir;
 
+    [Header("States")]
     public bool sliding;
     public bool wallRunning;
     public bool dashing;
@@ -87,6 +91,7 @@ public class PlayerMovementAdv : MonoBehaviour
         lightAttacking, 
         unknown
     }
+    
 
     void Start()
     {
@@ -95,6 +100,7 @@ public class PlayerMovementAdv : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
         //anim = GetComponentInChildren<Animator>();
+        combat = GetComponent<PlayerCombat>();
     
         readyToJump = true;
         startYScale = transform.localScale.y;
@@ -110,13 +116,6 @@ public class PlayerMovementAdv : MonoBehaviour
         if (grounded && !wasGrounded)
         {
             jumpsRemaining = maxJumps;
-
-            var slide = GetComponent<Sliding>();
-            if (slide != null && slide.resumeOnLand && Input.GetKey(crouchKey) && Input.GetKey(sprintKey))
-            {
-                slide.StartSlide();
-                slide.ClearResumeOnLand();
-            }
         }
         wasGrounded = grounded;
 
@@ -241,14 +240,8 @@ public class PlayerMovementAdv : MonoBehaviour
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
-            if (sliding)
-            {
-                var slide = GetComponent<Sliding>();
-                // If the player keeps holding the slide & sprint keys, queue a resume on landing
-                if (Input.GetKey(crouchKey) && Input.GetKey(sprintKey))
-                    slide.QueueResumeOnLand();
-                slide.StopSlide();
-            }
+            // Cancel attack on jump
+            combat.CancelAttack();
 
             Invoke(nameof(ResetJump), jumpCooldown);
 
@@ -264,13 +257,8 @@ public class PlayerMovementAdv : MonoBehaviour
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
-            if (sliding)
-            {
-                var slide = GetComponent<Sliding>();
-                if (Input.GetKey(crouchKey) && Input.GetKey(sprintKey))
-                    slide.QueueResumeOnLand();
-                slide.StopSlide();
-            }
+            // Cancel attack on double jump
+            combat.CancelAttack();
 
             jumpsRemaining--;
             jumpQueued = false; // consume
@@ -281,8 +269,15 @@ public class PlayerMovementAdv : MonoBehaviour
 
     private void StateHandler()
     {
+        //Mode - Light Attacking
+        if (lightAttacking)
+        {
+            state = MovementState.lightAttacking;
+            maxGroundSpeed = walkSpeed;
+        }
+
         //Mode - Wallrunning
-        if (wallRunning)
+        else if (wallRunning)
         {
             state = MovementState.wallrunning;
 
@@ -328,12 +323,6 @@ public class PlayerMovementAdv : MonoBehaviour
         {
             state = MovementState.crouching;
             maxGroundSpeed = crouchSpeed;
-        }
-
-        //Mode - Light Attacking
-        else if (lightAttacking)
-        {
-            state = MovementState.lightAttacking;
         }
 
         // Mode - idle
@@ -430,11 +419,11 @@ public class PlayerMovementAdv : MonoBehaviour
         }
     }
 
-
-
     //DEBUG - GUI
     void OnGUI()
     {
+        if (!debugMode.isOn)
+            return;
         GUIStyle style = new GUIStyle();
         style.fontSize = 20;
         float speed = new Vector3(rb.linearVelocity.x, rb.linearVelocity.y, rb.linearVelocity.z).magnitude;

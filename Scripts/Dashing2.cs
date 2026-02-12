@@ -9,6 +9,8 @@ public class Dashing2 : MonoBehaviour
     private Rigidbody rb;
     private PlayerMovementAdv pm;
     public PlayerCam cam;
+    private PlayerCombat combat;
+    public CapsuleCollider col;
 
     [Header("Dashing")]
     public float dashTime;
@@ -33,6 +35,8 @@ public class Dashing2 : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         pm = GetComponent<PlayerMovementAdv>();
+        combat = GetComponent<PlayerCombat>();
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
 
     void Update()
@@ -73,20 +77,36 @@ public class Dashing2 : MonoBehaviour
         pm.dashing = true;
         GetComponent<GroundSlam>().ResetSlam();
         cam.DoFov(90f);
+        combat.CancelAttack();
 
         Transform forwarT = useCameraForward ? playerCam : orientation;
 
         Vector3 dashDirection = GetDirection(forwarT);
 
+        if (IsDashDirectionBlocked(dashDirection))
+        {
+            pm.dashing = false;
+            cam.DoFov(80f);
+            yield break;
+        }
 
         // Check for obstacle in the dash path and clamp the target position to it
-        Vector3 startPosition = transform.position;
+        Vector3 startPosition = transform.position - dashDirection * skinWidth;
         float maxDistance = dashDistance;
         Vector3 targetPosition = startPosition + dashDirection * maxDistance;
 
-        if (Physics.Raycast(startPosition, dashDirection, out RaycastHit hit, maxDistance, dashMask))
+        GetCapsulePoints(out Vector3 c1, out Vector3 c2, out float radius);
+
+        if (Physics.CapsuleCast(
+                c1,
+                c2,
+                radius,
+                dashDirection,
+                out RaycastHit hit,
+                maxDistance,
+                dashMask))
         {
-            targetPosition = hit.point - dashDirection * skinWidth;
+            targetPosition = startPosition + dashDirection * (hit.distance - skinWidth);
         }
 
         float elapsedTime = 0f;
@@ -102,10 +122,21 @@ public class Dashing2 : MonoBehaviour
             float moveDist = moveDir.magnitude;
             if (moveDist > 0f)
             {
-                if (Physics.Raycast(transform.position, moveDir.normalized, out RaycastHit stepHit, moveDist + 0.01f, dashMask))
+                GetCapsulePoints(out Vector3 s1, out Vector3 s2, out float r);
+
+                if (Physics.CapsuleCast(
+                        s1,
+                        s2,
+                        r,
+                        moveDir.normalized,
+                        out RaycastHit stepHit,
+                        moveDist + skinWidth,
+                        dashMask))
                 {
-                    Vector3 collidePos = stepHit.point - moveDir.normalized * skinWidth;
-                    rb.MovePosition(collidePos);
+                    Vector3 safePos = transform.position +
+                                    moveDir.normalized * (stepHit.distance - skinWidth);
+
+                    rb.MovePosition(safePos);
                     rb.linearVelocity = Vector3.zero;
                     collided = true;
                     break;
@@ -127,5 +158,49 @@ public class Dashing2 : MonoBehaviour
 
         pm.dashing = false;
         cam.DoFov(80f);
+    }
+
+    void GetCapsulePoints(out Vector3 p1, out Vector3 p2, out float radius)
+    {
+        radius = col.radius * Mathf.Abs(transform.localScale.x);
+
+        float height = Mathf.Max(col.height * Mathf.Abs(transform.localScale.y), radius * 2f);
+        float halfHeight = height / 2f - radius;
+
+        Vector3 center = transform.TransformPoint(col.center);
+
+        p1 = center + Vector3.up * halfHeight;
+        p2 = center - Vector3.up * halfHeight;
+    }
+
+    bool IsDashDirectionBlocked(Vector3 dashDir)
+    {
+        GetCapsulePoints(out Vector3 p1, out Vector3 p2, out float radius);
+
+        Collider[] hits = Physics.OverlapCapsule(
+            p1,
+            p2,
+            radius + skinWidth,
+            dashMask,
+            QueryTriggerInteraction.Ignore
+        );
+
+        foreach (Collider hit in hits)
+        {
+            if (hit == col) continue;
+
+            if (Physics.ComputePenetration(
+                col, transform.position, transform.rotation,
+                hit, hit.transform.position, hit.transform.rotation,
+                out Vector3 depenDir,
+                out float depenDist))
+            {
+                // If penetration normal opposes dash direction, we're blocked
+                if (Vector3.Dot(dashDir, depenDir) < -0.1f)
+                    return true;
+            }
+        }
+
+        return false;
     }
 }
