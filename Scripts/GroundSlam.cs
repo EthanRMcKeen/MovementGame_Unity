@@ -6,7 +6,7 @@ public class GroundSlam : MonoBehaviour
     public Transform orientation;
     public Transform playerCam;
     private Rigidbody rb;
-    private PlayerMovementAdv pm;
+    private PlayerScript ps;
     public PlayerCam cam;
 
     [Header("Ground Slam")]
@@ -28,7 +28,7 @@ public class GroundSlam : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        pm = GetComponent<PlayerMovementAdv>();
+        ps = GetComponent<PlayerScript>();
         slamCooldownTimer = 0f;
     }
 
@@ -37,7 +37,7 @@ public class GroundSlam : MonoBehaviour
         bool keyTapped = Input.GetKeyDown(slamKey);
         bool keyHeld = Input.GetKey(slamKey);
 
-        if(keyTapped && !pm.sliding && !pm.slamming && !pm.superSlamming && !pm.grounded)
+        if(keyTapped && !ps.sliding && !ps.slamming && !ps.superSlamming && !ps.grounded)
         {
             if(slamCooldownTimer <= 0)
             {
@@ -46,7 +46,7 @@ public class GroundSlam : MonoBehaviour
                 Slam();
             }
         }
-        else if(keyHeld && (Time.time - keyTapTime) > keyTapTimeMax && !pm.sliding  && !pm.superSlamming && !pm.grounded)
+        else if(keyHeld && (Time.time - keyTapTime) > keyTapTimeMax && !ps.sliding  && !ps.superSlamming && !ps.grounded)
         {
             if(slamCooldownTimer <= 0)
             {
@@ -56,7 +56,7 @@ public class GroundSlam : MonoBehaviour
             }
         }
 
-        if((pm.slamming || pm.superSlamming) && pm.grounded)
+        if((ps.slamming || ps.superSlamming) && ps.grounded)
             ResetSlam();
         
         if(slamCooldownTimer > 0)
@@ -74,29 +74,29 @@ public class GroundSlam : MonoBehaviour
         
         if(superSlam)
         {
-            pm.superSlamming = true;
-            pm.slamming = false;
+            ps.superSlamming = true;
+            ps.slamming = false;
             rb.linearVelocity = Vector3.zero;
         }
         else
         {
-            pm.slamming = true;
-            pm.superSlamming = false;
+            ps.slamming = true;
+            ps.superSlamming = false;
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
         }
 
         Vector3 forceToApply = Vector3.down * slamForce;
         rb.AddForce(forceToApply, ForceMode.Impulse);
 
-        // if (pm.sliding)
+        // if (ps.sliding)
         //     GetComponent<Sliding>().StopSlide();
     }
 
 
     public void ResetSlam()
     {
-        pm.slamming = false;
-        pm.superSlamming = false;
+        ps.slamming = false;
+        ps.superSlamming = false;
 
         cam.DoFov(80f);
 

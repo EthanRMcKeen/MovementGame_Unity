@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine.UI;
 using UnityEngine;
 
-public class PlayerMovementAdv : MonoBehaviour
+public class PlayerScript : MonoBehaviour
 {
     [Header("Movement")]
     private float maxGroundSpeed; // moveSpeed
@@ -54,6 +54,7 @@ public class PlayerMovementAdv : MonoBehaviour
     public Animator anim;
     private PlayerCombat combat;
     public Toggle debugMode;
+    private WallRunning wr;
 
     float horizontalInput;
     float verticalInput;
@@ -67,13 +68,19 @@ public class PlayerMovementAdv : MonoBehaviour
     Rigidbody rb;
     Vector3 wishDir;
 
+    private string currentState;
+
     [Header("States")]
+    private bool crouching;
     public bool sliding;
     public bool wallRunning;
     public bool dashing;
     public bool slamming;
     public bool superSlamming;
     public bool lightAttacking;
+    public bool blocking;
+    public bool parrying;
+    public bool dodging;
 
     public MovementState state;
     public enum MovementState
@@ -89,6 +96,9 @@ public class PlayerMovementAdv : MonoBehaviour
         slamming,
         superslamming,
         lightAttacking, 
+        blocking,
+        parrying,
+        dodging,
         unknown
     }
     
@@ -101,10 +111,12 @@ public class PlayerMovementAdv : MonoBehaviour
 
         //anim = GetComponentInChildren<Animator>();
         combat = GetComponent<PlayerCombat>();
+        wr = GetComponent<WallRunning>();
     
         readyToJump = true;
         startYScale = transform.localScale.y;
         jumpsRemaining = maxJumps;
+        currentState = "idle";
     }
 
     void Update()
@@ -131,7 +143,7 @@ public class PlayerMovementAdv : MonoBehaviour
         GetInput();
         HandleDrag();
         StateHandler();
-        UpdateAnimations();
+        //UpdateAnimations();
     }
 
     void FixedUpdate()
@@ -162,11 +174,13 @@ public class PlayerMovementAdv : MonoBehaviour
         {
             transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
             rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+            crouching = true;
         }
 
         if(Input.GetKeyUp(crouchKey))
         {
             transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+            crouching = false;
         }
 
         //DEBUG - reset scene
@@ -240,8 +254,9 @@ public class PlayerMovementAdv : MonoBehaviour
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
-            // Cancel attack on jump
-            combat.CancelAttack();
+            // Cancel attack on jump (only if we were attacking)
+            if (combat != null && combat.IsHitboxActive())
+                combat.CancelAttack();
 
             Invoke(nameof(ResetJump), jumpCooldown);
 
@@ -257,8 +272,9 @@ public class PlayerMovementAdv : MonoBehaviour
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
-            // Cancel attack on double jump
-            combat.CancelAttack();
+            // Cancel attack on double jump (only if we were attacking)
+            if (combat != null && combat.IsHitboxActive())
+                combat.CancelAttack();
 
             jumpsRemaining--;
             jumpQueued = false; // consume
@@ -269,11 +285,34 @@ public class PlayerMovementAdv : MonoBehaviour
 
     private void StateHandler()
     {
+        // Mode - Dodging
+        if (dodging)
+        {
+            state = MovementState.dodging;
+            maxGroundSpeed = sprintSpeed;
+            ChangeAnimationState("dodge");
+        }
+
+        // Mode - Parrying
+        else if (parrying)
+        {
+            state = MovementState.parrying;
+            maxGroundSpeed = walkSpeed;
+        }
+        
         //Mode - Light Attacking
-        if (lightAttacking)
+        else if (lightAttacking)
         {
             state = MovementState.lightAttacking;
             maxGroundSpeed = walkSpeed;
+            ChangeAnimationState("light_attack");
+        }
+
+        else if (blocking)
+        {
+            state = MovementState.blocking;
+            maxGroundSpeed = crouchSpeed;
+            ChangeAnimationState("block");
         }
 
         //Mode - Wallrunning
@@ -282,6 +321,10 @@ public class PlayerMovementAdv : MonoBehaviour
             state = MovementState.wallrunning;
 
             maxGroundSpeed = wallRunSpeed;
+            if (wr.wallLeft)
+                ChangeAnimationState("wallrun_l");
+            else if (wr.wallRight)
+                ChangeAnimationState("wallrun_r");
         }
 
         //Mode - Dashing
@@ -304,6 +347,20 @@ public class PlayerMovementAdv : MonoBehaviour
             state = MovementState.slamming;
         }
 
+        // Mode - Jump
+        else if(!grounded && jumpsRemaining == maxJumps - 1 && state != MovementState.wallrunning)
+        {
+            state = MovementState.air;
+            ChangeAnimationState("jump");
+        }
+
+        // Mode - Double Jump
+        else if(!grounded && jumpsRemaining == maxJumps - 2 && state != MovementState.wallrunning)
+        {
+            state = MovementState.air;
+            ChangeAnimationState("double_jump");
+        }
+
         // Mode - Air
         else if (!grounded)
         {
@@ -316,55 +373,83 @@ public class PlayerMovementAdv : MonoBehaviour
             state = MovementState.sliding;
 
             maxGroundSpeed = sprintSpeed;
+            ChangeAnimationState("slide");
         }
 
         // Mode - crouching
-        else if (Input.GetKey(crouchKey))
+        else if (crouching)
         {
             state = MovementState.crouching;
             maxGroundSpeed = crouchSpeed;
+            ChangeAnimationState("idle");
         }
 
         // Mode - idle
-        else if (grounded && horizontalInput == 0 && verticalInput == 0 && !jumpQueued)
+        else if (grounded && horizontalInput == 0 && verticalInput == 0)
         {
             state = MovementState.idle;
+            ChangeAnimationState("idle");
         }
 
-        // Mode - sprinting
-        else if (grounded && Input.GetKey(sprintKey) && !jumpQueued)
+        // Mode - Running
+        else if (grounded && Input.GetKey(sprintKey))
         {
             state = MovementState.sprinting;
             maxGroundSpeed = sprintSpeed;
+            ChangeAnimationState("run");
         }
 
         //Mode - walking
-        else if (grounded && !jumpQueued)
+        else if (grounded)
         {
             state = MovementState.walking;
             maxGroundSpeed = walkSpeed;
+            ChangeAnimationState("walk");
         }
         //Mode - unkown
         else
         {
             state = MovementState.unknown;
+            if(debugMode.isOn)
+                Debug.Log("State is unknown. Check StateHandler conditions.");
         }
     }
 
-    void UpdateAnimations()
+    private void ChangeAnimationState(string newState)
     {
-        anim.SetBool("isRunning", state == MovementState.sprinting);
-
-        anim.SetBool("isWalking", state == MovementState.walking);
-
-        anim.SetBool("isSliding", state == MovementState.sliding);
-
-        anim.SetBool("isJumping", !grounded && jumpsRemaining == maxJumps - 1);
-
-        anim.SetBool("isDoubleJumping", !grounded && jumpsRemaining == maxJumps - 2);
-
-        anim.SetBool("isLAttacking", state == MovementState.lightAttacking);
+        if(currentState == newState) return;
+        anim.Play(newState);
+        currentState = newState;
     }
+
+    // void UpdateAnimations()
+    // {
+    //     anim.SetBool("isRunning", state == MovementState.sprinting);
+
+    //     anim.SetBool("isWalking", state == MovementState.walking);
+
+    //     anim.SetBool("isSliding", state == MovementState.sliding);
+
+    //     anim.SetBool("isJumping", !grounded && jumpsRemaining == maxJumps - 1 && state != MovementState.wallrunning);
+
+    //     anim.SetBool("isDoubleJumping", !grounded && jumpsRemaining == maxJumps - 2 && state != MovementState.wallrunning);
+
+    //     //anim.SetBool("isLAttacking", state == MovementState.lightAttacking);
+
+    //     anim.SetBool("isBlocking", state == MovementState.blocking);
+
+    //     anim.SetBool("isLWallRunning", state == MovementState.wallrunning && wr.wallLeft);
+
+    //     anim.SetBool("isRWallRunning", state == MovementState.wallrunning && wr.wallRight);
+
+    //     anim.SetBool("isDodging", state == MovementState.dodging);
+
+    //     anim.SetBool("isIdle", state == MovementState.idle);
+    //     if (state == MovementState.lightAttacking){
+    //         anim.SetTrigger("isLAttacking");
+    //         combat.CancelAttack();
+    //     }
+    // }
 
     private void ResetJump()
     {

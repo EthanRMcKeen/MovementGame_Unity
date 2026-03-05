@@ -9,7 +9,7 @@ public class Sliding : MonoBehaviour
     public Transform orientation;
     public Transform playerObj;
     private Rigidbody rb;
-    private PlayerMovementAdv pm;
+    private PlayerScript ps;
     public PlayerCam cam;
 
     [Header("Sliding")]
@@ -30,11 +30,11 @@ public class Sliding : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        pm = GetComponent<PlayerMovementAdv>();
+        ps = GetComponent<PlayerScript>();
 
         startYScale = playerObj.localScale.y;
 
-        pm.sliding = false;
+        ps.sliding = false;
     }
 
     private void Update()
@@ -47,11 +47,11 @@ public class Sliding : MonoBehaviour
 
         if (Input.GetKeyUp(slideKey))
         {
-            if (pm.sliding)
+            if (ps.sliding)
                 StopSlide();
         }
 
-        if (pm.sliding && (!pm.grounded || (pm.OnSlope() && rb.linearVelocity.y < 0.1f)))
+        if (ps.sliding && (!ps.grounded || (ps.OnSlope() && rb.linearVelocity.y < 0.1f)))
         {
             slideTimer = maxSliderTime;
         }
@@ -59,13 +59,13 @@ public class Sliding : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (pm.sliding)
+        if (ps.sliding)
             SlidingMovement();
     }
 
     public void StartSlide()
     {
-        pm.sliding = true;
+        ps.sliding = true;
 
         Vector3 currentVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
         slideSpeed = currentVel.magnitude;
@@ -109,10 +109,10 @@ public class Sliding : MonoBehaviour
             ).normalized;
         }
         
-        if (pm.OnSlope())
+        if (ps.OnSlope())
         {
-            slideDirection = pm.GetSlopeMoveDirection(slideDirection);
-            Vector3 downSlopeDir = Vector3.ProjectOnPlane(Vector3.down, pm.slopeHit.normal).normalized;
+            slideDirection = ps.GetSlopeMoveDirection(slideDirection);
+            Vector3 downSlopeDir = Vector3.ProjectOnPlane(Vector3.down, ps.slopeHit.normal).normalized;
             if (Vector3.Dot(slideDirection, downSlopeDir) > 0)
             {
                 slideSpeed += slideAcceleration * Time.deltaTime;
@@ -122,9 +122,9 @@ public class Sliding : MonoBehaviour
 
         Vector3 targetVel = slideDirection * slideSpeed;
 
-        if (pm.OnSlope())
+        if (ps.OnSlope())
         {
-            rb.linearVelocity = Vector3.ProjectOnPlane(targetVel, pm.slopeHit.normal);
+            rb.linearVelocity = Vector3.ProjectOnPlane(targetVel, ps.slopeHit.normal);
         }
         else
         {
@@ -139,7 +139,7 @@ public class Sliding : MonoBehaviour
 
     public void StopSlide()
     {
-        pm.sliding = false;
+        ps.sliding = false;
         playerObj.localScale = new Vector3(playerObj.localScale.x, startYScale, playerObj.localScale.z);
     
         // reset camera

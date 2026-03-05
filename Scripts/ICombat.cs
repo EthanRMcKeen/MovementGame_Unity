@@ -6,4 +6,5 @@ public interface ICombat
     bool IsParrying { get; }
     bool IsParryable { get; }
     void OnParried();
+    void Parry();
 }

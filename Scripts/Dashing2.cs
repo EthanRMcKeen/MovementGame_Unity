@@ -7,7 +7,7 @@ public class Dashing2 : MonoBehaviour
     public Transform orientation;
     public Transform playerCam;
     private Rigidbody rb;
-    private PlayerMovementAdv pm;
+    private PlayerScript ps;
     public PlayerCam cam;
     private PlayerCombat combat;
     public CapsuleCollider col;
@@ -34,7 +34,7 @@ public class Dashing2 : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        pm = GetComponent<PlayerMovementAdv>();
+        ps = GetComponent<PlayerScript>();
         combat = GetComponent<PlayerCombat>();
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
     }
@@ -74,7 +74,7 @@ public class Dashing2 : MonoBehaviour
 
     private IEnumerator Dash()
     {
-        pm.dashing = true;
+        ps.dashing = true;
         GetComponent<GroundSlam>().ResetSlam();
         cam.DoFov(90f);
         combat.CancelAttack();
@@ -85,7 +85,7 @@ public class Dashing2 : MonoBehaviour
 
         if (IsDashDirectionBlocked(dashDirection))
         {
-            pm.dashing = false;
+            ps.dashing = false;
             cam.DoFov(80f);
             yield break;
         }
@@ -156,7 +156,7 @@ public class Dashing2 : MonoBehaviour
 
         rb.linearVelocity = dashDirection * postDashVelocity;
 
-        pm.dashing = false;
+        ps.dashing = false;
         cam.DoFov(80f);
     }
 

@@ -4,86 +4,113 @@ using UnityEngine;
 public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
 {
     [Header("References")]
-    private PlayerMovementAdv pm;
+    private PlayerScript ps;
     public GameObject weapon;
     public MeshRenderer hitboxMesh;
-    public AnimationClip attackAnimation;
     public Toggle debugMode;
+    private CapsuleCollider weaponCollider;
 
     [Header("Attack Settings")]
     public float attackDamage = 25f;
     public float attackCooldown = 1.5f;
-    private float attackAnimationDuration;
-    public float attackStartupTime = 0.5f;
-    public float attackHitboxDuration = 0.5f;
     public float parryDamage = 10f;
     public bool isParrying = false;
     
     private float cooldownTimer = 0f;
-    private float animationTimer = 0f;
 
     [Header("Player Settings")]
     public float maxHealth = 100f;
     private float currentHealth;
+    public float parryIFramesDuration = 0.5f;
+
+    public bool isDamageable;
+    private bool hitboxActive = false;
+    private bool attackInProgress = false;
 
     private void Start()
     {
-        pm = GetComponent<PlayerMovementAdv>();
-        attackAnimationDuration = attackAnimation.length;
+        ps = GetComponent<PlayerScript>();
         currentHealth = maxHealth;
+        isDamageable = true;
+        weaponCollider = weapon.GetComponent<CapsuleCollider>();
+        weaponCollider.enabled = false;
     }
 
     private void Update()
     {
-        // Tick down timers
         cooldownTimer -= Time.deltaTime;
-        animationTimer -= Time.deltaTime;
 
-        // Light attacking
-        if (Input.GetMouseButtonDown(0) && cooldownTimer <= 0)
+        HandleInput();
+        HandleDebug();
+    }
+
+    private void HandleInput()
+    {
+        // Light attack input
+        if (Input.GetMouseButtonDown(0) && cooldownTimer <= 0f && !attackInProgress)
         {
             Attack();
         }
 
-        // Reset attack state after animation duration
-        if (animationTimer <= 0 && pm.lightAttacking)
-        {
-            pm.lightAttacking = false;
-        }
+        // Blocking (disabled while attacking)
+        if (!attackInProgress)
+            ps.blocking = Input.GetMouseButton(1);
+    }
 
-        if (debugMode.isOn)
-        {
-            // DEBUG: show hitbox while active
-            if (IsHitboxActive())
-                hitboxMesh.enabled = true;
-            else
-                hitboxMesh.enabled = false;
-        }
+    private void HandleDebug()
+    {
+        if (!debugMode) return;
+
+        hitboxMesh.enabled = debugMode.isOn && weaponCollider.enabled;
+    }
+
+    public void Parry()
+    {
+        isDamageable = false;
+        ps.parrying = true;
+        Invoke(nameof(ResetParry), parryIFramesDuration);
+    }
+
+    private void ResetParry()
+    {
+        isDamageable = true;
+        isParrying = false;
+        ps.parrying = false;
+        //add parry effect here
     }
 
     private void Attack()
     {
-        pm.lightAttacking = true;
+        ps.lightAttacking = true;
+        attackInProgress = true;
+
         cooldownTimer = attackCooldown;
-        animationTimer = attackAnimationDuration;
+        Invoke(nameof(CancelAttack), attackCooldown);
+    }
+
+    public void EnableHitbox()
+    {
+        weaponCollider.enabled = true;
+        isParrying = true;
+        hitboxActive = true;
+    }
+
+    public void DisableHitbox()
+    {
+        weaponCollider.enabled = false;
+        isParrying = false;
+        hitboxActive = false;
     }
 
     public bool IsHitboxActive()
     {
-        float timeSinceAttackStart = attackAnimationDuration - animationTimer;
-        if (timeSinceAttackStart >= attackStartupTime && timeSinceAttackStart < attackStartupTime + attackHitboxDuration)
-        {
-            weapon.GetComponent<CapsuleCollider>().enabled = true;
-            isParrying = true;
-            return true;
-        }
-        weapon.GetComponent<CapsuleCollider>().enabled = false;
-        isParrying = false;
-        return false;
+        return hitboxActive;
     }
 
     public void TakeDamage(float damage)
     {
+        if (!isDamageable)
+            return;
         currentHealth -= damage;
         if(debugMode.isOn)
             Debug.Log("Player took " + damage + " damage. Current health: " + currentHealth);
@@ -91,15 +118,18 @@ public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
 
     public void CancelAttack()
     {
-        pm.lightAttacking = false;
-        cooldownTimer = 0f;
-        animationTimer = 0f;
+        attackInProgress = false;
+        ps.lightAttacking = false;
+
+        weaponCollider.enabled = false;
+        isParrying = false;
     }
 
     // ICombat
     public float AttackDamage => attackDamage;
-    public bool IsParrying => isParrying;
+    public bool IsParrying => isParrying;//whether player is attempting to parry
     public bool IsParryable => false;
+    public bool IsBlocking => ps.blocking;
 
     public void OnParried()
     {

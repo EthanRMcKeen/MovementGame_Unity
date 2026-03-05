@@ -31,13 +31,13 @@ public class WallRunning : MonoBehaviour
 
     private RaycastHit leftWallHit;
     private RaycastHit rightWallHit;
-    private bool wallLeft;
-    private bool wallRight;
+    public bool wallLeft;
+    public bool wallRight;
 
     [Header("References")]
     public Transform orientation;
     private Rigidbody rb;
-    private PlayerMovementAdv pm;
+    private PlayerScript ps;
     public PlayerCam cam;
 
     // NEW
@@ -46,7 +46,7 @@ public class WallRunning : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        pm = GetComponent<PlayerMovementAdv>();
+        ps = GetComponent<PlayerScript>();
     }
 
     private void Update()
@@ -57,7 +57,7 @@ public class WallRunning : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (pm.wallRunning)
+        if (ps.wallRunning)
         {
             WallRunningMovement();
 
@@ -75,7 +75,7 @@ public class WallRunning : MonoBehaviour
 
     private bool AboveGround()
     {
-        return !pm.grounded;
+        return !ps.grounded;
     }
 
     private void StateMachine()
@@ -89,7 +89,7 @@ public class WallRunning : MonoBehaviour
         bool pressLeft  = horizontalInput < 0f;
 
         // enter wall run
-        if (!pm.wallRunning && AboveGround())
+        if (!ps.wallRunning && AboveGround())
         {
             if (wallRight)
             {
@@ -104,7 +104,7 @@ public class WallRunning : MonoBehaviour
         }
 
         // while wall running
-        if (pm.wallRunning)
+        if (ps.wallRunning)
         {
             // Stop if wall is lost
             if ((runningOnRightWall && !wallRight) ||
@@ -129,7 +129,7 @@ public class WallRunning : MonoBehaviour
 
     private void StartWallRun()
     {
-        pm.wallRunning = true;
+        ps.wallRunning = true;
         wallRunTimer = maxWallRunTime;
 
         RaycastHit wallHit = runningOnRightWall ? rightWallHit : leftWallHit;
@@ -188,7 +188,7 @@ public class WallRunning : MonoBehaviour
         }
 
         // Maintain speed
-        pm.Accelerate(wallForward, wallRunSpeed, pm.groundAcceleration);
+        ps.Accelerate(wallForward, wallRunSpeed, ps.groundAcceleration);
 
         // Vertical movement
         if (upwardRunning)
@@ -205,9 +205,9 @@ public class WallRunning : MonoBehaviour
 
     private void StopWallRun()
     {
-        pm.wallRunning = false;
+        ps.wallRunning = false;
 
-        pm.ClearJumpQueue();
+        ps.ClearJumpQueue();
 
         // reset camera
         cam.DoFov(80f);
@@ -225,6 +225,6 @@ public class WallRunning : MonoBehaviour
 
         StopWallRun();
         
-        pm.ClearJumpQueue();
+        ps.ClearJumpQueue();
     }
 }

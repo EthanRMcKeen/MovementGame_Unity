@@ -6,7 +6,7 @@ public class Dashing : MonoBehaviour
     public Transform orientation;
     public Transform playerCam;
     private Rigidbody rb;
-    private PlayerMovementAdv pm;
+    private PlayerScript ps;
     public PlayerCam cam;
 
     [Header("Dashing")]
@@ -29,7 +29,7 @@ public class Dashing : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        pm = GetComponent<PlayerMovementAdv>();
+        ps = GetComponent<PlayerScript>();
     }
 
     private void Update()
@@ -48,7 +48,7 @@ public class Dashing : MonoBehaviour
         else
             dashCdTimer = dashCd;
 
-        pm.dashing = true;
+        ps.dashing = true;
         GetComponent<GroundSlam>().ResetSlam();
 
         cam.DoFov(90f);
@@ -59,7 +59,7 @@ public class Dashing : MonoBehaviour
         Invoke(nameof(DelayedDashForce), 0.025f);
         Invoke(nameof(ResetDash), dashDuration);
 
-        if (pm.sliding)
+        if (ps.sliding)
             GetComponent<Sliding>().StopSlide();
     }
 
@@ -81,7 +81,7 @@ public class Dashing : MonoBehaviour
 
     private void ResetDash()
     {
-        pm.dashing = false;
+        ps.dashing = false;
 
         cam.DoFov(80f);
 

@@ -117,6 +117,7 @@ public class Enemy : MonoBehaviour, ICombat, IDamageable
     public float AttackDamage => attackDamage;
     public bool IsParrying => false;
     public bool IsParryable => isParryable;
+    public bool IsBlocking => false; // Enemy does not block (might change in future for different enemy types)
 
     public void OnParried()
     {
@@ -127,6 +128,12 @@ public class Enemy : MonoBehaviour, ICombat, IDamageable
             Debug.Log("Enemy was parried!");
         //particle effect
         Instantiate(parryEffect, attackHitbox.transform.position, attackHitbox.transform.rotation);
+    }
+
+    public void Parry()
+    {
+        // Enemy does not parry (might change in future for different enemy types)
+        return;
     }
 
 }

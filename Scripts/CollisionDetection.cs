@@ -6,6 +6,7 @@ public class CollisionDetection : MonoBehaviour
     public MonoBehaviour combat;
     private HashSet<int> hitTargets = new HashSet<int>();
     private bool wasHitboxActive = false;
+    public float blockingDamageReduction = 0.5f; 
 
     private void OnTriggerEnter(Collider other)
     {
@@ -28,18 +29,21 @@ public class CollisionDetection : MonoBehaviour
             {
                 if (defenderCombat.IsParrying && attackerCombat.IsParryable)
                 {
+                    defenderCombat.Parry();
                     attackerCombat.OnParried();
                     return;
                 }
                 else if (defenderCombat.IsParryable && attackerCombat.IsParrying)
                 {
+                    attackerCombat.Parry();
                     defenderCombat.OnParried();
                     return;
                 }
             }
             
-            defenderDamageable.TakeDamage(attackerCombat.AttackDamage);
-            //Debug.Log("Hit detected for " + attackerCombat.AttackDamage + " damage.");
+            float damage = defenderDamageable.IsBlocking ? attackerCombat.AttackDamage * blockingDamageReduction : attackerCombat.AttackDamage;
+            defenderDamageable.TakeDamage(damage);
+            Debug.Log("Hit detected for " + damage + " damage.");
         }
     }
 
