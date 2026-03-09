@@ -25,11 +25,14 @@ public class GroundSlam : MonoBehaviour
     private Vector3 originalVelocity;
     private float keyTapTime;
 
+    private float startFOV;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         ps = GetComponent<PlayerScript>();
         slamCooldownTimer = 0f;
+        startFOV = cam.cam.fieldOfView;
     }
 
     private void Update()
@@ -65,7 +68,7 @@ public class GroundSlam : MonoBehaviour
 
     private void Slam()
     {
-        cam.DoFov(90f);
+        cam.DoFov(startFOV + 20f);
 
         if (disableGravityDuringSlam)
             rb.useGravity = false;
@@ -98,7 +101,7 @@ public class GroundSlam : MonoBehaviour
         ps.slamming = false;
         ps.superSlamming = false;
 
-        cam.DoFov(80f);
+        cam.DoFov(startFOV);
 
         if (disableGravityDuringSlam)
             rb.useGravity = true;

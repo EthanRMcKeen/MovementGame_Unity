@@ -11,6 +11,8 @@ public class Sliding : MonoBehaviour
     private Rigidbody rb;
     private PlayerScript ps;
     public PlayerCam cam;
+    public CapsuleCollider env_col;
+    CapsuleCollider atk_col;
 
     [Header("Sliding")]
     public float maxSliderTime;
@@ -21,20 +23,24 @@ public class Sliding : MonoBehaviour
     private Vector3 slideDirection;
 
     public float slideYScale;
-    private float startYScale;
+    private float startHeight;
 
     [Header("Input")]
     public KeyCode slideKey = KeyCode.LeftControl;
     public KeyCode sprintKey = KeyCode.LeftShift;
 
+    private float startFOV;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         ps = GetComponent<PlayerScript>();
+        atk_col = GetComponent<CapsuleCollider>();
 
-        startYScale = playerObj.localScale.y;
+        startHeight = env_col.height;
 
         ps.sliding = false;
+        startFOV = cam.cam.fieldOfView;
     }
 
     private void Update()
@@ -84,13 +90,18 @@ public class Sliding : MonoBehaviour
             slideDirection = orientation.forward;
         }
 
-        playerObj.localScale = new Vector3(playerObj.localScale.x, slideYScale, playerObj.localScale.z);
-        rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+        float slideHeight = startHeight * slideYScale;
+        float heightDiff = startHeight - slideHeight;
+        env_col.height = slideHeight;
+        env_col.center = new Vector3(env_col.center.x, -heightDiff / 2f, env_col.center.z);
+        atk_col.height = slideHeight;
+        atk_col.center = new Vector3(atk_col.center.x, -heightDiff / 2f, atk_col.center.z);
+
 
         slideTimer = maxSliderTime;
 
         //camera effects
-        cam.DoFov(90f);
+        cam.DoFov(startFOV + 20f);
     }
 
     private void SlidingMovement()
@@ -140,9 +151,12 @@ public class Sliding : MonoBehaviour
     public void StopSlide()
     {
         ps.sliding = false;
-        playerObj.localScale = new Vector3(playerObj.localScale.x, startYScale, playerObj.localScale.z);
+        env_col.height = startHeight;
+        env_col.center = new Vector3(env_col.center.x, 0f, env_col.center.z);
+        atk_col.height = startHeight;
+        atk_col.center = new Vector3(atk_col.center.x, 0f, atk_col.center.z);
     
         // reset camera
-        cam.DoFov(80f);
+        cam.DoFov(startFOV);
     }
 }

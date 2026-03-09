@@ -31,12 +31,15 @@ public class Dashing2 : MonoBehaviour
     public bool useCameraForward = true;
     public bool allowAllDirections = false;
 
+    private float startFOV;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         ps = GetComponent<PlayerScript>();
         combat = GetComponent<PlayerCombat>();
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        startFOV = cam.cam.fieldOfView;
     }
 
     void Update()
@@ -76,7 +79,7 @@ public class Dashing2 : MonoBehaviour
     {
         ps.dashing = true;
         GetComponent<GroundSlam>().ResetSlam();
-        cam.DoFov(90f);
+        cam.DoFov(startFOV + 20f);
         combat.CancelAttack();
 
         Transform forwarT = useCameraForward ? playerCam : orientation;
@@ -86,7 +89,7 @@ public class Dashing2 : MonoBehaviour
         if (IsDashDirectionBlocked(dashDirection))
         {
             ps.dashing = false;
-            cam.DoFov(80f);
+            cam.DoFov(startFOV);
             yield break;
         }
 
@@ -157,7 +160,7 @@ public class Dashing2 : MonoBehaviour
         rb.linearVelocity = dashDirection * postDashVelocity;
 
         ps.dashing = false;
-        cam.DoFov(80f);
+        cam.DoFov(startFOV);
     }
 
     void GetCapsulePoints(out Vector3 p1, out Vector3 p2, out float radius)

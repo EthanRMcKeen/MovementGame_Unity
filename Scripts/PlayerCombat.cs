@@ -15,8 +15,13 @@ public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
     public float attackCooldown = 1.5f;
     public float parryDamage = 10f;
     public bool isParrying = false;
-    
     private float cooldownTimer = 0f;
+    private bool bufferedAttackInput = false;
+
+    [Header("Combo Settings")]
+    public float comboResetTime = 2f;
+    public int comboStep = 0;
+    private float lastAttackTime = 0f;
 
     [Header("Player Settings")]
     public float maxHealth = 100f;
@@ -39,6 +44,13 @@ public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
     private void Update()
     {
         cooldownTimer -= Time.deltaTime;
+        
+        // Reset combo if too much time has passed
+        if (Time.time - lastAttackTime > comboResetTime && comboStep > 0)
+        {
+            comboStep = 0;
+            ps.currentComboStep = 0;
+        }
 
         HandleInput();
         HandleDebug();
@@ -47,9 +59,17 @@ public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
     private void HandleInput()
     {
         // Light attack input
-        if (Input.GetMouseButtonDown(0) && cooldownTimer <= 0f && !attackInProgress)
+        if (Input.GetMouseButtonDown(0))
         {
-            Attack();
+            if (cooldownTimer <= 0f)
+            {
+                Attack();
+            }
+            else if (attackInProgress)
+            {
+                // Buffer the attack input while attacking
+                bufferedAttackInput = true;
+            }
         }
 
         // Blocking (disabled while attacking)
@@ -81,7 +101,14 @@ public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
 
     private void Attack()
     {
+        // Update combo step
+        comboStep++;
+        if (comboStep > 3)
+            comboStep = 1;
+        
+        lastAttackTime = Time.time;
         ps.lightAttacking = true;
+        ps.currentComboStep = comboStep;
         attackInProgress = true;
 
         cooldownTimer = attackCooldown;
@@ -123,6 +150,13 @@ public class PlayerCombat : MonoBehaviour, ICombat, IDamageable
 
         weaponCollider.enabled = false;
         isParrying = false;
+
+        // Check if player buffered an attack input
+        if (bufferedAttackInput)
+        {
+            bufferedAttackInput = false;
+            Attack();
+        }
     }
 
     // ICombat

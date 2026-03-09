@@ -40,6 +40,8 @@ public class WallRunning : MonoBehaviour
     private PlayerScript ps;
     public PlayerCam cam;
 
+    private float startFOV;
+
     // NEW
     private bool runningOnRightWall;
 
@@ -47,6 +49,7 @@ public class WallRunning : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         ps = GetComponent<PlayerScript>();
+        startFOV = cam.cam.fieldOfView;
     }
 
     private void Update()
@@ -167,7 +170,7 @@ public class WallRunning : MonoBehaviour
 
 
         // Camera effects
-        cam.DoFov(90f);
+        cam.DoFov(startFOV + 20f);
         if(wallLeft)
             cam.DoTilt(-5f);
         if(wallRight)
@@ -210,7 +213,7 @@ public class WallRunning : MonoBehaviour
         ps.ClearJumpQueue();
 
         // reset camera
-        cam.DoFov(80f);
+        cam.DoFov(startFOV);
         cam.DoTilt(0f);
     }
 

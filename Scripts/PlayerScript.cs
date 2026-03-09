@@ -32,8 +32,8 @@ public class PlayerScript : MonoBehaviour
 
     [Header("Crouching")]
     public float crouchSpeed = 4f;
-    public float crouchYScale = 0.5f;
-    private float startYScale;
+    public float crouchScale = 0.5f;
+    private float startHeight;
 
     [Header("Keybinds")]
     public KeyCode jumpKey = KeyCode.Space;
@@ -55,6 +55,7 @@ public class PlayerScript : MonoBehaviour
     private PlayerCombat combat;
     public Toggle debugMode;
     private WallRunning wr;
+    public CapsuleCollider env_col;
 
     float horizontalInput;
     float verticalInput;
@@ -67,8 +68,10 @@ public class PlayerScript : MonoBehaviour
 
     Rigidbody rb;
     Vector3 wishDir;
+    CapsuleCollider atk_col;
 
     private string currentState;
+    public int currentComboStep = 0;
 
     [Header("States")]
     private bool crouching;
@@ -112,9 +115,10 @@ public class PlayerScript : MonoBehaviour
         //anim = GetComponentInChildren<Animator>();
         combat = GetComponent<PlayerCombat>();
         wr = GetComponent<WallRunning>();
+        atk_col = GetComponent<CapsuleCollider>();
     
         readyToJump = true;
-        startYScale = transform.localScale.y;
+        startHeight = atk_col.height;
         jumpsRemaining = maxJumps;
         currentState = "idle";
     }
@@ -172,14 +176,34 @@ public class PlayerScript : MonoBehaviour
         //start crouch
         if (Input.GetKeyDown(crouchKey))
         {
-            transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
-            rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+            float crouchHeight = startHeight * crouchScale;
+            float heightDiff = startHeight - crouchHeight;
+
+            env_col.height = crouchHeight;
+            env_col.center = new Vector3(
+                env_col.center.x,
+                - heightDiff / 2f,
+                env_col.center.z
+            );
+
+            atk_col.height = crouchHeight;
+            atk_col.center = new Vector3(
+                atk_col.center.x,
+                - heightDiff / 2f,
+                atk_col.center.z
+            );
+
+            //rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             crouching = true;
         }
 
         if(Input.GetKeyUp(crouchKey))
         {
-            transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+            atk_col.height = startHeight;
+            atk_col.center = new Vector3(atk_col.center.x, 0f, atk_col.center.z);
+
+            env_col.height = startHeight;
+            env_col.center = new Vector3(env_col.center.x, 0f, env_col.center.z);
             crouching = false;
         }
 
@@ -305,7 +329,8 @@ public class PlayerScript : MonoBehaviour
         {
             state = MovementState.lightAttacking;
             maxGroundSpeed = walkSpeed;
-            ChangeAnimationState("light_attack");
+            string attackAnim = $"Lattack{currentComboStep}";
+            ChangeAnimationState(attackAnim);
         }
 
         else if (blocking)
@@ -381,7 +406,13 @@ public class PlayerScript : MonoBehaviour
         {
             state = MovementState.crouching;
             maxGroundSpeed = crouchSpeed;
-            ChangeAnimationState("idle");
+            if (horizontalInput != 0 || verticalInput != 0)
+            {
+                ChangeAnimationState("crouch_walk");
+            }else
+            {
+                ChangeAnimationState("crouch_idle");
+            }
         }
 
         // Mode - idle

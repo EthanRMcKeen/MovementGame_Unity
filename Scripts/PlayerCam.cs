@@ -13,6 +13,8 @@ public class PlayerCam : MonoBehaviour
     public Transform camHolder;
     public Slider slider;
 
+    public Camera cam;
+
     float xRotation;
     float yRotation;
 
@@ -22,6 +24,7 @@ public class PlayerCam : MonoBehaviour
         Cursor.visible = false;
         sensX = slider.value;
         sensY = slider.value;
+        //cam = GetComponent<Camera>();
     }
 
     private void Update()

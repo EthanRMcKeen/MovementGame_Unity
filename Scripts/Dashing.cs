@@ -26,10 +26,13 @@ public class Dashing : MonoBehaviour
     public bool allowAllDirections = false;
     public bool disableGravityDuringDash = false;
 
+    private float startFOV;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         ps = GetComponent<PlayerScript>();
+        startFOV = cam.cam.fieldOfView;
     }
 
     private void Update()
@@ -51,7 +54,7 @@ public class Dashing : MonoBehaviour
         ps.dashing = true;
         GetComponent<GroundSlam>().ResetSlam();
 
-        cam.DoFov(90f);
+        cam.DoFov(startFOV + 20f);
 
         if (disableGravityDuringDash)
             rb.useGravity = false;
@@ -83,7 +86,7 @@ public class Dashing : MonoBehaviour
     {
         ps.dashing = false;
 
-        cam.DoFov(80f);
+        cam.DoFov(startFOV);
 
         if (disableGravityDuringDash)
             rb.useGravity = true;

@@ -24,11 +24,14 @@ public class Dodging : MonoBehaviour
     [Header("Settings")]
     public bool disableGravityDuringDodge = false;
 
+    private float startFOV;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         ps = GetComponent<PlayerScript>();
         pc = GetComponent<PlayerCombat>();
+        startFOV = cam.cam.fieldOfView;
     }
 
     private void Update()
@@ -50,7 +53,7 @@ public class Dodging : MonoBehaviour
             GetComponent<Sliding>().StopSlide();
 
         ps.dodging = true;
-        cam.DoFov(90f);
+        cam.DoFov(startFOV + 20f);
 
         pc.isDamageable = false;
 
@@ -81,7 +84,7 @@ public class Dodging : MonoBehaviour
     {
         ps.dodging = false;
 
-        cam.DoFov(80f);
+        cam.DoFov(startFOV);
 
         pc.isDamageable = true;
 
