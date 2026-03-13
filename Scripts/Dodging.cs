@@ -9,6 +9,7 @@ public class Dodging : MonoBehaviour
     private PlayerScript ps;
     private PlayerCombat pc;
     public PlayerCam cam;
+    public AvatarOrientaion avatarOrientaion;
 
     [Header("Dodging")]
     public float dodgeForce;
@@ -90,6 +91,9 @@ public class Dodging : MonoBehaviour
 
         if (disableGravityDuringDodge)
             rb.useGravity = true;
+
+        //reset orientation
+        avatarOrientaion.faceMovementDirection = false;
     }
 
     private Vector3 GetDirection(Transform forwarT)
@@ -100,6 +104,8 @@ public class Dodging : MonoBehaviour
         Vector3 direction = new Vector3();
 
         direction = forwarT.forward * verticalInput + forwarT.right * horizontalInput;
+        //make orientation in the dodge direction
+        avatarOrientaion.faceMovementDirection = true;
 
         if (verticalInput == 0 && horizontalInput == 0)
             direction = forwarT.forward;

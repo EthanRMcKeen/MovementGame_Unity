@@ -70,7 +70,7 @@ public class PlayerScript : MonoBehaviour
     Vector3 wishDir;
     CapsuleCollider atk_col;
 
-    private string currentState;
+    private string[] currentState = new string[2];
     public int currentComboStep = 0;
 
     [Header("States")]
@@ -85,7 +85,7 @@ public class PlayerScript : MonoBehaviour
     public bool parrying;
     public bool dodging;
 
-    public MovementState state;
+    public MovementState mstate;
     public enum MovementState
     {
         idle,
@@ -98,11 +98,24 @@ public class PlayerScript : MonoBehaviour
         air,
         slamming,
         superslamming,
+        dodging,
+        unknown
+    }
+
+    public CombatState cstate;
+    public enum CombatState
+    {
+        idle,
         lightAttacking, 
         blocking,
         parrying,
-        dodging,
         unknown
+    }
+
+    private enum AnimationLayer
+    {
+        fullBody = 0,
+        upperBody = 1
     }
     
 
@@ -112,6 +125,9 @@ public class PlayerScript : MonoBehaviour
         rb.freezeRotation = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
+        mstate = MovementState.idle;
+        cstate = CombatState.idle;
+
         //anim = GetComponentInChildren<Animator>();
         combat = GetComponent<PlayerCombat>();
         wr = GetComponent<WallRunning>();
@@ -120,7 +136,10 @@ public class PlayerScript : MonoBehaviour
         readyToJump = true;
         startHeight = atk_col.height;
         jumpsRemaining = maxJumps;
-        currentState = "idle";
+
+        // initialize current state array
+        currentState[(int)AnimationLayer.fullBody] = "idle";
+        currentState[(int)AnimationLayer.upperBody] = "empty";
     }
 
     void Update()
@@ -162,6 +181,9 @@ public class PlayerScript : MonoBehaviour
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
+
+        anim.SetFloat("x", horizontalInput);
+        anim.SetFloat("y", verticalInput);
 
         wishJump = Input.GetKey(jumpKey);
 
@@ -309,41 +331,19 @@ public class PlayerScript : MonoBehaviour
 
     private void StateHandler()
     {
+        // MOVEMENT STATES
         // Mode - Dodging
         if (dodging)
         {
-            state = MovementState.dodging;
+            mstate = MovementState.dodging;
             maxGroundSpeed = sprintSpeed;
-            ChangeAnimationState("dodge");
-        }
-
-        // Mode - Parrying
-        else if (parrying)
-        {
-            state = MovementState.parrying;
-            maxGroundSpeed = walkSpeed;
-        }
-        
-        //Mode - Light Attacking
-        else if (lightAttacking)
-        {
-            state = MovementState.lightAttacking;
-            maxGroundSpeed = walkSpeed;
-            string attackAnim = $"Lattack{currentComboStep}";
-            ChangeAnimationState(attackAnim);
-        }
-
-        else if (blocking)
-        {
-            state = MovementState.blocking;
-            maxGroundSpeed = crouchSpeed;
-            ChangeAnimationState("block");
+            ChangeAnimationState("dodge", 0);
         }
 
         //Mode - Wallrunning
         else if (wallRunning)
         {
-            state = MovementState.wallrunning;
+            mstate = MovementState.wallrunning;
 
             maxGroundSpeed = wallRunSpeed;
             if (wr.wallLeft)
@@ -355,7 +355,7 @@ public class PlayerScript : MonoBehaviour
         //Mode - Dashing
         else if (dashing)
         {
-            state = MovementState.dashing;
+            mstate = MovementState.dashing;
 
             maxGroundSpeed = dashspeed;
         }
@@ -363,39 +363,39 @@ public class PlayerScript : MonoBehaviour
         //Mode - Superslamming
         else if (superSlamming)
         {
-            state = MovementState.superslamming;
+            mstate = MovementState.superslamming;
         }
 
         //Mode - Slamming
         else if (slamming)
         {
-            state = MovementState.slamming;
+            mstate = MovementState.slamming;
         }
 
         // Mode - Jump
-        else if(!grounded && jumpsRemaining == maxJumps - 1 && state != MovementState.wallrunning)
+        else if(!grounded && jumpsRemaining == maxJumps - 1 && mstate != MovementState.wallrunning)
         {
-            state = MovementState.air;
+            mstate = MovementState.air;
             ChangeAnimationState("jump");
         }
 
         // Mode - Double Jump
-        else if(!grounded && jumpsRemaining == maxJumps - 2 && state != MovementState.wallrunning)
+        else if(!grounded && jumpsRemaining == maxJumps - 2 && mstate != MovementState.wallrunning)
         {
-            state = MovementState.air;
+            mstate = MovementState.air;
             ChangeAnimationState("double_jump");
         }
 
         // Mode - Air
         else if (!grounded)
         {
-            state = MovementState.air;
+            mstate = MovementState.air;
         }
 
         // Mode - Sliding
         else if (sliding)
         {
-            state = MovementState.sliding;
+            mstate = MovementState.sliding;
 
             maxGroundSpeed = sprintSpeed;
             ChangeAnimationState("slide");
@@ -404,7 +404,7 @@ public class PlayerScript : MonoBehaviour
         // Mode - crouching
         else if (crouching)
         {
-            state = MovementState.crouching;
+            mstate = MovementState.crouching;
             maxGroundSpeed = crouchSpeed;
             if (horizontalInput != 0 || verticalInput != 0)
             {
@@ -418,14 +418,14 @@ public class PlayerScript : MonoBehaviour
         // Mode - idle
         else if (grounded && horizontalInput == 0 && verticalInput == 0)
         {
-            state = MovementState.idle;
-            ChangeAnimationState("idle");
+            mstate = MovementState.idle;
+            ChangeAnimationState("locomotion");
         }
 
         // Mode - Running
         else if (grounded && Input.GetKey(sprintKey))
         {
-            state = MovementState.sprinting;
+            mstate = MovementState.sprinting;
             maxGroundSpeed = sprintSpeed;
             ChangeAnimationState("run");
         }
@@ -433,24 +433,61 @@ public class PlayerScript : MonoBehaviour
         //Mode - walking
         else if (grounded)
         {
-            state = MovementState.walking;
+            mstate = MovementState.walking;
             maxGroundSpeed = walkSpeed;
-            ChangeAnimationState("walk");
+            ChangeAnimationState("locomotion");
         }
         //Mode - unkown
         else
         {
-            state = MovementState.unknown;
+            mstate = MovementState.unknown;
             if(debugMode.isOn)
                 Debug.Log("State is unknown. Check StateHandler conditions.");
         }
+
+
+        // COMBAT STATES
+        // Mode - Parrying
+        if (parrying)
+        {
+            cstate = CombatState.parrying;
+            maxGroundSpeed = walkSpeed;
+        }
+        
+        //Mode - Light Attacking
+        else if (lightAttacking)
+        {
+            cstate = CombatState.lightAttacking;
+            maxGroundSpeed = walkSpeed;
+            string attackAnim = $"Lattack{currentComboStep}";
+            ChangeAnimationState(attackAnim, AnimationLayer.upperBody);
+        }
+
+        else if (blocking)
+        {
+            cstate = CombatState.blocking;
+            maxGroundSpeed = crouchSpeed;
+            ChangeAnimationState("block", AnimationLayer.upperBody);
+        }
+
+        // Mode - idle
+        else
+        {
+            cstate = CombatState.idle;
+            ChangeAnimationState("empty", AnimationLayer.upperBody);
+        }
     }
 
-    private void ChangeAnimationState(string newState)
+    private void ChangeAnimationState(string newState, AnimationLayer layer = AnimationLayer.fullBody)
     {
-        if(currentState == newState) return;
-        anim.Play(newState);
-        currentState = newState;
+        int layerIndex = (int)layer;
+
+        if (currentState[layerIndex] == newState)
+            return;
+
+        anim.Play(newState, layerIndex);
+
+        currentState[layerIndex] = newState;
     }
 
     // void UpdateAnimations()
@@ -544,10 +581,11 @@ public class PlayerScript : MonoBehaviour
         style.fontSize = 20;
         float speed = new Vector3(rb.linearVelocity.x, rb.linearVelocity.y, rb.linearVelocity.z).magnitude;
         GUI.Label(new Rect(10, 10, 200, 30), $"Speed: {speed:F2}", style);
-        GUI.Label(new Rect(10, 30, 200, 30), $"State: {state}", style);
-        GUI.Label(new Rect(10, 50, 200, 30), $"Jumps Remaining: {jumpsRemaining}", style);
-        GUI.Label(new Rect(10, 70, 200, 30), $"Horizontal Input: {horizontalInput}", style);
-        GUI.Label(new Rect(10, 90, 200, 30), $"Vertical Input: {verticalInput}", style);
+        GUI.Label(new Rect(10, 30, 200, 30), $"MState: {mstate}", style);
+        GUI.Label(new Rect(10, 50, 200, 30), $"CState: {cstate}", style);
+        GUI.Label(new Rect(10, 70, 200, 30), $"Jumps Remaining: {jumpsRemaining}", style);
+        GUI.Label(new Rect(10, 90, 200, 30), $"Horizontal Input: {horizontalInput}", style);
+        GUI.Label(new Rect(10, 110, 200, 30), $"Vertical Input: {verticalInput}", style);
         style.normal.textColor = Color.green;
     }
 }
