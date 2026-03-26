@@ -39,6 +39,7 @@ public class PlayerScript : MonoBehaviour
     public KeyCode jumpKey = KeyCode.Space;
     public KeyCode sprintKey = KeyCode.LeftShift;
     public KeyCode crouchKey = KeyCode.LeftControl;
+    public KeyCode inspectKey = KeyCode.F;
 
     [Header("Ground Check")]
     public LayerMask whatIsGround;
@@ -52,6 +53,7 @@ public class PlayerScript : MonoBehaviour
     [Header("References")]
     public Transform orientation;
     public Animator anim;
+    public Animator vmAnim;
     private PlayerCombat combat;
     public Toggle debugMode;
     private WallRunning wr;
@@ -194,6 +196,11 @@ public class PlayerScript : MonoBehaviour
             jumpQueued = true;
         }
 
+        if (Input.GetKeyDown(inspectKey))
+        {
+            vmAnim.SetTrigger("inspect");
+        }
+
 
         //start crouch
         if (Input.GetKeyDown(crouchKey))
@@ -216,6 +223,8 @@ public class PlayerScript : MonoBehaviour
             );
 
             //rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+            orientation.position = new Vector3(orientation.position.x, orientation.position.y - heightDiff, orientation.position.z);
+
             crouching = true;
         }
 
@@ -226,6 +235,11 @@ public class PlayerScript : MonoBehaviour
 
             env_col.height = startHeight;
             env_col.center = new Vector3(env_col.center.x, 0f, env_col.center.z);
+
+            float crouchHeight = startHeight * crouchScale;
+            float heightDiff = startHeight - crouchHeight;
+
+            orientation.position = new Vector3(orientation.position.x, orientation.position.y + heightDiff, orientation.position.z);
             crouching = false;
         }
 
